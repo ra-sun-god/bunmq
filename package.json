@@ -1,6 +1,6 @@
 {
   "name": "@rasungod/bunmq",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "Advanced message queue for Bun — SQLite, PostgreSQL, MySQL/MariaDB, and in-memory, all via Bun's built-in SQL client",
   "type": "module",
   "main": "./src/index.ts",
@@ -8,32 +8,40 @@
   "types": "./src/index.ts",
   "exports": {
     ".": "./src/index.ts",
-    "./adapters/bun-sql":  "./src/adapters/bun-sql.ts",
-    "./adapters/memory":   "./src/adapters/memory.ts",
-    "./adapters/schema":   "./src/adapters/schema.ts"
+    "./adapters/bun-sql": "./src/adapters/bun-sql.ts",
+    "./adapters/memory": "./src/adapters/memory.ts",
+    "./adapters/schema": "./src/adapters/schema.ts"
   },
   "scripts": {
     "test": "bun test --timeout 15000",
     "build": "bun build ./src/index.ts --outdir ./dist --target bun --format esm"
   },
   "keywords": [
-    "bun", "sqlite", "postgresql", "mysql", "mariadb",
-    "message-queue", "mq", "queue", "worker", "job"
+    "bun",
+    "sqlite",
+    "postgresql",
+    "mysql",
+    "mariadb",
+    "message-queue",
+    "mq",
+    "queue",
+    "worker",
+    "job"
   ],
   "license": "MIT",
   "devDependencies": {
     "bun-types": "latest"
   },
   "author": {
-		"name": "Razak"
-	},
-	"repository": {
-		"type": "git",
-		"url": "git+https://github.com/ra-sun-god/bunmq.git"
-	},
-	"bugs": {
-		"url": "https://github.com/ra-sun-god/bunmq/issues",
-		"email": "hello@maxxpainn.com"
-	},
-	"homepage": "https://github.com/ra-sun-god/bunmq#readme"
+    "name": "Razak"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ra-sun-god/bunmq.git"
+  },
+  "bugs": {
+    "url": "https://github.com/ra-sun-god/bunmq/issues",
+    "email": "hello@maxxpainn.com"
+  },
+  "homepage": "https://github.com/ra-sun-god/bunmq#readme"
 }
