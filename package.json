@@ -1,0 +1,41 @@
+{
+  "name": "bunmq",
+  "version": "1.0.0",
+  "description": "Advanced multi-adapter message queue for Bun — SQLite, libSQL/Turso, PostgreSQL, MySQL, Redis, in-memory",
+  "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types":  "./dist/index.d.ts"
+    },
+    "./adapters/sqlite":     { "import": "./dist/adapters/sqlite.js",     "types": "./dist/adapters/sqlite.d.ts" },
+    "./adapters/libsql":     { "import": "./dist/adapters/libsql.js",     "types": "./dist/adapters/libsql.d.ts" },
+    "./adapters/postgresql": { "import": "./dist/adapters/postgresql.js", "types": "./dist/adapters/postgresql.d.ts" },
+    "./adapters/mysql":      { "import": "./dist/adapters/mysql.js",      "types": "./dist/adapters/mysql.d.ts" },
+    "./adapters/redis":      { "import": "./dist/adapters/redis.js",      "types": "./dist/adapters/redis.d.ts" },
+    "./adapters/memory":     { "import": "./dist/adapters/memory.js",     "types": "./dist/adapters/memory.d.ts" }
+  },
+  "scripts": {
+    "build": "bun build ./src/index.ts --outdir ./dist --target bun --format esm",
+    "test":  "bun test --timeout 15000",
+    "dev":   "bun run ./src/index.ts"
+  },
+  "keywords": ["bun", "sqlite", "libsql", "turso", "postgresql", "mysql", "redis", "message-queue", "mq", "queue", "worker", "job"],
+  "license": "MIT",
+  "peerDependencies": {
+    "@libsql/client": ">=0.6.0",
+    "postgres":       ">=3.0.0",
+    "mysql2":         ">=3.0.0"
+  },
+  "peerDependenciesMeta": {
+    "@libsql/client": { "optional": true },
+    "postgres":       { "optional": true },
+    "mysql2":         { "optional": true }
+  },
+  "devDependencies": {
+    "bun-types": "latest"
+  }
+}
