@@ -1,7 +1,7 @@
 import { SQL } from "bun";
 import type { StorageAdapter, AdapterRow, MutationResult } from "./adapter.ts";
-import { applySchema } from "../schema.ts";
-
+import { applySchema } from "./schema.ts";
+ 
 // ─────────────────────────────────────────────────────────────────────────────
 // BunSQLAdapter — the single SQL adapter for bunmq, powered by Bun's built-in
 // SQL client. Supports SQLite, PostgreSQL, MySQL, and MariaDB through one
