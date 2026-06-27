@@ -37,5 +37,17 @@
   },
   "devDependencies": {
     "bun-types": "latest"
-  }
+  },
+  "author": {
+		"name": "Razak"
+	},
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/ra-sun-god/bunmq.git"
+	},
+	"bugs": {
+		"url": "https://github.com/ra-sun-god/bunmq/issues",
+		"email": "hello@maxxpainn.com"
+	},
+	"homepage": "https://github.com/ra-sun-god/bunmq#readme"
 }
