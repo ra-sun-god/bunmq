@@ -3,7 +3,7 @@
 **Advanced message queue for Bun** — SQLite, PostgreSQL, MySQL, and MariaDB all through Bun's built-in SQL client. Zero external SQL driver dependencies. In-memory adapter included for tests.
 
 ```sh
-bun add bunmq
+bun add @rasungod/bunmq
 ```
 
 ---
