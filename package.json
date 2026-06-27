@@ -1,6 +1,6 @@
 {
   "name": "@rasungod/bunmq",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "description": "Advanced message queue for Bun — SQLite, PostgreSQL, MySQL/MariaDB, and in-memory, all via Bun's built-in SQL client",
   "type": "module",
   "main": "./src/index.ts",
