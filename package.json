@@ -1,6 +1,6 @@
 {
   "name": "bunmq",
-  "version": "1.0.0",
+  "version": "0.0.1",
   "description": "Advanced multi-adapter message queue for Bun — SQLite, libSQL/Turso, PostgreSQL, MySQL, Redis, in-memory",
   "type": "module",
   "main": "./dist/index.js",
