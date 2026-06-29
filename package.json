@@ -1,37 +1,44 @@
 {
   "name": "@rasungod/bunmq",
-  "version": "0.0.5",
-  "description": "Advanced message queue for Bun — SQLite, PostgreSQL, MySQL/MariaDB, and in-memory, all via Bun's built-in SQL client",
+  "version": "0.0.1",
+  "description": "Advanced message queue for Bun — SQLite, PostgreSQL, MySQL, MariaDB, Redis, and in-memory via Bun's built-in clients",
   "type": "module",
-  "main": "./src/index.ts",
-  "module": "./src/index.ts",
-  "types": "./src/index.ts",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "exports": {
-    ".": "./src/index.ts",
-    "./adapters/bun-sql": "./src/adapters/bun-sql.ts",
-    "./adapters/memory": "./src/adapters/memory.ts",
-    "./adapters/schema": "./src/adapters/schema.ts"
+    ".": {
+      "import": "./dist/index.js",
+      "types":  "./dist/index.d.ts"
+    },
+    "./adapters/bun-sql": {
+      "import": "./dist/adapters/bun-sql.js",
+      "types":  "./dist/adapters/bun-sql.d.ts"
+    },
+    "./adapters/redis": {
+      "import": "./dist/adapters/redis.js",
+      "types":  "./dist/adapters/redis.d.ts"
+    },
+    "./adapters/memory": {
+      "import": "./dist/adapters/memory.js",
+      "types":  "./dist/adapters/memory.d.ts"
+    },
+    "./adapters/schema": {
+      "import": "./dist/adapters/schema.js",
+      "types":  "./dist/adapters/schema.d.ts"
+    }
   },
   "scripts": {
-    "test": "bun test --timeout 15000",
-    "build": "bun build ./src/index.ts --outdir ./dist --target bun --format esm"
+    "build": "bun build ./src/index.ts --outdir ./dist --target bun --format esm",
+    "test":  "bun test --timeout 15000",
+    "dev":   "bun run ./src/index.ts"
   },
   "keywords": [
-    "bun",
-    "sqlite",
-    "postgresql",
-    "mysql",
-    "mariadb",
-    "message-queue",
-    "mq",
-    "queue",
-    "worker",
-    "job"
+    "bun", "sqlite", "postgresql", "mysql", "mariadb", "redis",
+    "message-queue", "mq", "queue", "worker", "job",
+    "bunmq", "bun-sql", "task-queue", "background-jobs"
   ],
   "license": "MIT",
-  "devDependencies": {
-    "bun-types": "latest"
-  },
   "author": {
     "name": "Razak"
   },
@@ -43,5 +50,8 @@
     "url": "https://github.com/ra-sun-god/bunmq/issues",
     "email": "hello@maxxpainn.com"
   },
-  "homepage": "https://github.com/ra-sun-god/bunmq#readme"
+  "homepage": "https://www.npmjs.com/package/@rasungod/bunmq",
+  "devDependencies": {
+    "bun-types": "latest"
+  }
 }

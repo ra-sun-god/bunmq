@@ -1,6 +1,8 @@
-# bunmq
+# @rasungod/bunmq
 
-**Advanced message queue for Bun** — SQLite, PostgreSQL, MySQL, and MariaDB all through Bun's built-in SQL client. Zero external SQL driver dependencies. In-memory adapter included for tests.
+**Advanced message queue for Bun** — SQLite, PostgreSQL, MySQL, MariaDB, Redis, and in-memory. All SQL backends use Bun's built-in `SQL` client; Redis uses Bun's built-in `RedisClient`. Zero external driver dependencies.
+
+[![npm](https://img.shields.io/npm/v/@rasungod/bunmq)](https://www.npmjs.com/package/@rasungod/bunmq)
 
 ```sh
 bun add @rasungod/bunmq
@@ -10,26 +12,25 @@ bun add @rasungod/bunmq
 
 ## Backends
 
-All SQL backends use `import { SQL } from "bun"` — no extra packages needed.
-
-| Backend    | URL scheme              | Notes                             |
-|------------|-------------------------|-----------------------------------|
-| **SQLite** | `sqlite://:memory:`     | Default. File or in-memory.       |
-| **PostgreSQL** | `postgres://...`    | Pooled connections.               |
-| **MySQL**  | `mysql://...`           | Also covers **MariaDB**.          |
-| **Memory** | *(no URL)*              | In-process Map store, for tests.  |
+| Backend        | Adapter              | URL scheme            | Requires              |
+|----------------|----------------------|-----------------------|-----------------------|
+| **SQLite**     | `BunSQLAdapter`      | `sqlite://`           | Bun built-in SQL      |
+| **PostgreSQL** | `BunSQLAdapter`      | `postgres://`         | Bun built-in SQL      |
+| **MySQL**      | `BunSQLAdapter`      | `mysql://`            | Bun built-in SQL      |
+| **MariaDB**    | `BunSQLAdapter`      | `mysql://`            | Bun built-in SQL      |
+| **Redis**      | `BunRedisAdapter`    | `redis://`            | Bun built-in RedisClient |
+| **Memory**     | `MemoryAdapter`      | *(none)*              | Nothing — for tests   |
 
 ---
 
 ## Quick Start
 
 ```ts
-import { BunMQ } from "bunmq";
+import { BunMQ } from "@rasungod/bunmq";
 
-// Default: in-memory SQLite, no config needed
+// Default: in-memory SQLite — zero config
 const mq = await BunMQ.create();
 
-// Define a queue and handler
 mq.defineQueue("emails", { concurrency: 5 })
   .handle("emails", "send-welcome", async (ctx) => {
     const { to } = ctx.job.payload as { to: string };
@@ -59,27 +60,78 @@ await mq.close();
 ## Choosing an Adapter
 
 ```ts
-import { BunMQ, BunSQLAdapter, MemoryAdapter, sqlite, postgres, mysql, mariadb } from "bunmq";
+import {
+  BunMQ,
+  BunSQLAdapter,
+  BunRedisAdapter,
+  MemoryAdapter,
+  sqlite, postgres, mysql, mariadb,
+} from "@rasungod/bunmq";
 
-// ── SQLite (default) ─────────────────────────────────────────────────────────
+// SQLite — in-memory (default)
 const mq = await BunMQ.create();
-// or with a file:
-const mq = await BunMQ.create({ adapter: sqlite("sqlite:///path/to/queue.db") });
-// or full URL:
-const mq = await BunMQ.create({ adapter: new BunSQLAdapter({ url: "sqlite:///queue.db" }) });
 
-// ── PostgreSQL ────────────────────────────────────────────────────────────────
-const mq = await BunMQ.create({ adapter: postgres("postgres://user:pass@localhost:5432/mydb") });
+// SQLite — file
+const mq = await BunMQ.create({
+  adapter: sqlite("sqlite:///path/to/queue.db"),
+});
 
-// ── MySQL ─────────────────────────────────────────────────────────────────────
-const mq = await BunMQ.create({ adapter: mysql("mysql://user:pass@localhost:3306/mydb") });
+// SQLite — file with lock retry options (use when multiple processes share the DB)
+const mq = await BunMQ.create({
+  adapter: new BunSQLAdapter({
+    url:         "sqlite:///queue.db",
+    busyTimeout: 15_000,   // SQLite waits up to 15s for a lock
+    maxRetries:  10,        // app-level retries on SQLITE_BUSY
+    retryDelay:  100,       // base ms for exponential backoff
+  }),
+});
 
-// ── MariaDB (same wire protocol as MySQL) ─────────────────────────────────────
-const mq = await BunMQ.create({ adapter: mariadb("mysql://user:pass@localhost:3306/mydb") });
+// PostgreSQL
+const mq = await BunMQ.create({
+  adapter: postgres("postgres://user:pass@localhost:5432/mydb"),
+});
 
-// ── In-memory (unit tests) ────────────────────────────────────────────────────
-const mq = await BunMQ.create({ adapter: new MemoryAdapter() });
+// MySQL
+const mq = await BunMQ.create({
+  adapter: mysql("mysql://user:pass@localhost:3306/mydb"),
+});
+
+// MariaDB (same wire protocol as MySQL)
+const mq = await BunMQ.create({
+  adapter: mariadb("mysql://user:pass@localhost:3306/mydb"),
+});
+
+// Redis — Bun's built-in RedisClient
+const mq = await BunMQ.create({
+  adapter: new BunRedisAdapter({ url: "redis://localhost:6379" }),
+});
+
+// Memory — in-process, zero persistence, great for unit tests
+const mq = await BunMQ.create({
+  adapter: new MemoryAdapter(),
+});
 ```
+
+---
+
+## SQLite Lock Handling
+
+When multiple processes (e.g. a web server + a background indexer) share the same SQLite file, writes can collide and produce `SQLiteError: database is locked`. `BunSQLAdapter` handles this automatically:
+
+1. **`busyTimeout`** — passed to SQLite itself via the URL (`?busy_timeout=N`). SQLite will spin-wait inside the engine for up to N ms before returning `SQLITE_BUSY`.
+2. **`maxRetries` + `retryDelay`** — application-level retry wrapper around every `run()`, `get()`, `all()`, and `transaction()`. On `SQLITE_BUSY` / `SQLITE_LOCKED`, it waits `retryDelay * 2^attempt + jitter` ms and retries, up to `maxRetries` times.
+
+```ts
+new BunSQLAdapter({
+  url:         "sqlite:///shared.db",
+  wal:         true,         // WAL mode reduces lock contention (default: true)
+  busyTimeout: 10_000,       // SQLite-level wait (default: 10s)
+  maxRetries:  5,            // App-level retries (default: 5)
+  retryDelay:  50,           // Base retry delay ms (default: 50)
+})
+```
+
+For high-contention multi-process setups, consider PostgreSQL or Redis instead.
 
 ---
 
@@ -87,26 +139,13 @@ const mq = await BunMQ.create({ adapter: new MemoryAdapter() });
 
 ```ts
 await BunMQ.create({
-  adapter:             new BunSQLAdapter(),  // defaults to in-memory SQLite
-  defaultQueueOptions: { concurrency: 2 },   // applies to all queues
+  adapter:             new BunSQLAdapter(),  // default: in-memory SQLite
+  defaultQueueOptions: { concurrency: 2 },   // global defaults for all queues
   migrate:             true,                  // auto-create schema (default: true)
-  cleanupInterval:     60_000,                // TTL/metrics pruning ms
-  enableLogs:          false,                 // per-job structured log table
-  repeatInterval:      5_000,                 // repeat job scheduler interval ms
+  cleanupInterval:     60_000,                // TTL/metrics pruning interval ms
+  enableLogs:          false,                 // structured per-job log table
+  repeatInterval:      5_000,                 // repeat job scheduler poll ms
 });
-```
-
----
-
-## BunSQLAdapter Options
-
-```ts
-new BunSQLAdapter({
-  url:     "sqlite://:memory:",   // connection URL (see schemes above)
-  dialect: "sqlite",              // optional — inferred from URL
-  max:     10,                    // pool size (PostgreSQL / MySQL only)
-  wal:     true,                  // SQLite only: WAL mode (default: true)
-})
 ```
 
 ---
@@ -121,8 +160,8 @@ mq.defineQueue("my-queue", {
   defaultBackoff:   { type: "exponential", delay: 1000, max: 30_000 },
   defaultPriority:  "normal",
   pollInterval:     500,
-  removeOnComplete: 3_600_000,
-  removeOnFail:     0,
+  removeOnComplete: 3_600_000,   // auto-delete completed jobs after 1h
+  removeOnFail:     0,           // keep failed/dead jobs forever
   rateLimit:        { max: 100, window: 60_000 },
   stalledTimeout:   60_000,
   paused:           false,
@@ -137,32 +176,32 @@ mq.defineQueue("my-queue", {
 await mq.add("queue", payload);
 
 await mq.add("queue", payload, {
-  name:      "job-type",      // routes to the matching handler
-  priority:  "critical",      // critical | high | normal | low
-  delay:     5_000,           // ms before first run
-  attempts:  5,               // max retries
+  name:      "job-type",       // routes to the matching handler
+  priority:  "critical",       // critical | high | normal | low
+  delay:     5_000,            // ms before first run
+  attempts:  5,                // max retries
   backoff:   { type: "exponential", delay: 500, max: 10_000 },
-  timeout:   15_000,          // ms — 0 = unlimited
+  timeout:   15_000,           // ms per attempt — 0 = unlimited
   tags:      ["billing"],
   meta:      { userId: 42 },
-  ttl:       86_400_000,      // auto-delete if not run within 24h
+  ttl:       86_400_000,       // auto-delete if not run within 24h
   dedupKey:  "welcome:user:42",
   jobId:     "my-custom-id",
 });
 
-// Bulk add
+// Bulk
 const result = await mq.addBulk("queue", [
   { payload: { n: 1 } },
   { payload: { n: 2 }, opts: { priority: "high" } },
 ]);
 
-// Repeating — cron
+// Cron repeat
 await mq.addRepeat("reports", "daily-digest", {}, {
-  cron:    "0 9 * * 1-5",    // 9am Mon–Fri
-  limit:   52,
+  cron:  "0 9 * * 1-5",   // 9am Mon–Fri
+  limit: 52,
 });
 
-// Repeating — interval
+// Interval repeat
 await mq.addRepeat("health", "ping", {}, { every: 30_000 });
 ```
 
@@ -172,19 +211,19 @@ await mq.addRepeat("health", "ping", {}, { every: 30_000 });
 
 ```ts
 mq.handle("queue", "job-name", async (ctx) => {
-  ctx.job.payload          // your payload
-  ctx.job.attempts         // 0-based attempt number
-  ctx.job.meta             // metadata
+  ctx.job.payload           // your typed payload
+  ctx.job.attempts          // 0-based attempt number
+  ctx.job.meta              // metadata dict
 
   await ctx.updateProgress(50)              // 0–100
   await ctx.log("doing thing", "info")      // "info" | "warn" | "error"
   await ctx.extendLock(30_000)              // prevent stall detection
-  await ctx.moveToQueue("other-queue")      // transfer job mid-flight
+  await ctx.moveToQueue("other-queue")      // transfer mid-flight
 
   return { anything: "you want" }           // stored as job.result
 });
 
-// Wildcard — catches any unmatched name
+// Wildcard — catches any unmatched job name
 mq.handle("queue", "*", async (ctx) => { ... });
 ```
 
@@ -206,9 +245,9 @@ mq.handle("queue", "*", async (ctx) => { ... });
 5-field syntax: `minute hour dom month dow`
 
 ```
-*/5 * * * *          every 5 minutes
-0 9 * * 1-5          9am weekdays
-0 0 1 * *            midnight on the 1st of every month
+*/5 * * * *        every 5 minutes
+0 9 * * 1-5        9am weekdays
+0 0 1 * *          midnight on the 1st
 @daily / @hourly / @weekly / @monthly / @yearly
 ```
 
@@ -217,18 +256,18 @@ mq.handle("queue", "*", async (ctx) => { ... });
 ## Queue Management
 
 ```ts
-await mq.pause("queue")                             // stop processing (still accepts jobs)
+await mq.pause("queue")                            // accept jobs but don't process
 await mq.resume("queue")
-await mq.drain("queue")                             // delete all pending/scheduled
-await mq.clean("queue", "completed", 3_600_000)     // delete completed > 1h old
-await mq.retryAll("queue", "dead")                  // re-queue all dead jobs
-await mq.obliterate("queue")                        // delete everything for this queue
+await mq.drain("queue")                            // delete all pending/scheduled
+await mq.clean("queue", "completed", 3_600_000)    // delete completed > 1h old
+await mq.retryAll("queue", "dead")                 // re-queue all dead jobs
+await mq.obliterate("queue")                       // delete everything for this queue
 
-await mq.retry("job-id")                            // re-queue a single dead job
-await mq.promote("job-id")                          // run a scheduled job immediately
-await mq.cancel("job-id")                           // delete a pending/scheduled job
-await mq.remove("job-id")                           // delete any job
-await mq.updateMeta("job-id", { key: "val" })       // merge metadata
+await mq.retry("job-id")                           // re-queue a single dead job
+await mq.promote("job-id")                         // run a scheduled job now
+await mq.cancel("job-id")                          // delete a pending/scheduled job
+await mq.remove("job-id")                          // delete any job
+await mq.updateMeta("job-id", { key: "val" })      // merge metadata
 ```
 
 ---
@@ -255,7 +294,27 @@ mq.off("job:completed",  handler)
 
 ---
 
-## Querying
+## Stats & Monitoring
+
+```ts
+const stats = await mq.getQueueStats("emails");
+// {
+//   queue, pending, active, completed, failed, dead, scheduled, total,
+//   throughput: { completed_last_minute, failed_last_minute,
+//                 completed_last_hour,   failed_last_hour },
+//   avgProcessingTime,   // ms | null
+//   oldestPendingAge,    // ms | null
+// }
+
+const global = await mq.getGlobalStats();
+// { queues: [...], total: {...}, db: { size, pageSize, pageCount } }
+
+const logs = await mq.getJobLogs("job-id");  // requires enableLogs: true
+```
+
+---
+
+## Querying Jobs
 
 ```ts
 await mq.findJobs({
@@ -266,30 +325,11 @@ await mq.findJobs({
   tags:          ["transactional"],
   createdAfter:  new Date("2024-01-01"),
   createdBefore: new Date(),
-  orderBy:       "priority",    // createdAt | scheduledAt | priority | attempts
+  orderBy:       "priority",   // createdAt | scheduledAt | priority | attempts
   order:         "asc",
   limit:         50,
   offset:        0,
 });
-```
-
----
-
-## Stats
-
-```ts
-const stats = await mq.getQueueStats("emails");
-// {
-//   queue, pending, active, completed, failed, dead, scheduled, total,
-//   throughput: { completed_last_minute, failed_last_minute, completed_last_hour, failed_last_hour },
-//   avgProcessingTime,   // ms
-//   oldestPendingAge,    // ms
-// }
-
-const global = await mq.getGlobalStats();
-// { queues: [...], total: { pending, active, completed, ... }, db: { size, pageSize, pageCount } }
-
-const logs = await mq.getJobLogs("job-id");  // requires enableLogs: true
 ```
 
 ---
@@ -307,50 +347,32 @@ await mq.waitForDrain("emails", 60_000);
 
 ```
 src/
-├── index.ts                  Public exports
-├── mq.ts                     BunMQ core — async, adapter-agnostic
-├── types.ts                  All types and interfaces
-├── events.ts                 Typed event emitter
-├── cron.ts                   5-field cron parser + next-date calculator
-├── backoff.ts                Retry delay strategies (fixed/exp/linear/jitter)
-├── serializer.ts             Row ↔ Job mapping, ID generation
+├── index.ts                 Public exports
+├── mq.ts                    BunMQ core — async, adapter-agnostic
+├── types.ts                 All types and interfaces
+├── events.ts                Typed event emitter
+├── cron.ts                  5-field cron parser + next-date calculator
+├── backoff.ts               Retry delay strategies
+├── serializer.ts            Row ↔ Job mapping, ID generation
 └── adapters/
-    ├── adapter.ts            StorageAdapter interface
-    ├── bun-sql.ts            BunSQLAdapter — SQLite/PostgreSQL/MySQL/MariaDB
-    ├── memory.ts             MemoryAdapter — in-process, zero deps
-    ├── schema.ts             Dialect-aware DDL + SQL helpers
-    └── index.ts              Adapter barrel
+    ├── adapter.ts           StorageAdapter interface
+    ├── bun-sql.ts           BunSQLAdapter — SQLite/PostgreSQL/MySQL/MariaDB
+    ├── redis.ts             BunRedisAdapter — Bun built-in RedisClient
+    ├── memory.ts            MemoryAdapter — in-process, zero deps
+    ├── schema.ts            Dialect-aware DDL + SQL helpers
+    └── index.ts             Adapter barrel
 ```
 
-### How `BunSQLAdapter` works
+---
 
-Bun's `SQL` class accepts a URL and auto-selects the right native driver. `BunSQLAdapter` wraps it with three operations:
+## Links
 
-- **`db.unsafe(sql, values[])`** — runs parameterised queries. All MQ SQL uses `$name` placeholders; `namedToPositional()` rewrites these to `?` and extracts values in order (one `?` per occurrence, no deduplication — required because SQLite/MySQL bind exactly N values for N placeholders).
-- **`db.transaction(async tx => {...})`** — Bun handles `BEGIN`/`COMMIT`/`ROLLBACK` automatically. The `tx` object also has `.unsafe()`, so the same rewriting path is used inside transactions.
-- **SQLite PRAGMAs** — WAL mode goes in the URL (`?journal_mode=WAL`); performance settings (`synchronous`, `cache_size`, `mmap_size`) are applied via `db.unsafe("PRAGMA ...")` after connect.
-
-### Writing a custom adapter
-
-```ts
-import type { StorageAdapter, AdapterRow, MutationResult } from "bunmq";
-import { applySchema } from "bunmq";
-
-class MyAdapter implements StorageAdapter {
-  readonly dialect = "sqlite" as const;  // closest match
-
-  async connect()  { /* open connection */ }
-  async run(sql, params = {})  { return { changes: 0 }; }
-  async get(sql, params = {})  { return null; }
-  async all(sql, params = {})  { return []; }
-  async transaction(fn)        { return fn(this); }
-  async migrate(enableLogs)    { await applySchema(this, enableLogs); }
-  async close()                { /* teardown */ }
-}
-```
+- **npm:** https://www.npmjs.com/package/@rasungod/bunmq
+- **GitHub:** https://github.com/ra-sun-god/bunmq
+- **Issues:** https://github.com/ra-sun-god/bunmq/issues
 
 ---
 
 ## License
 
-MIT
+MIT © Razak

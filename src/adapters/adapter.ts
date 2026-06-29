@@ -23,7 +23,7 @@ export interface MutationResult {
  *   "memory"     — In-process Map store, zero dependencies
  */
 export interface StorageAdapter {
-  readonly dialect: "sqlite" | "postgresql" | "mysql" | "memory";
+  readonly dialect: "sqlite" | "postgresql" | "mysql" | "memory" | "redis";
 
   connect(): Promise<void>;
   run(sql: string, params?: Record<string, unknown>): Promise<MutationResult>;
