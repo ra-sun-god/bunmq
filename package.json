@@ -1,6 +1,6 @@
 {
   "name": "@rasungod/bunmq",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "Advanced message queue for Bun — SQLite, PostgreSQL, MySQL, MariaDB, Redis, and in-memory via Bun's built-in clients",
   "type": "module",
   "main": "./dist/index.js",
@@ -9,34 +9,46 @@
   "exports": {
     ".": {
       "import": "./dist/index.js",
-      "types":  "./dist/index.d.ts"
+      "types": "./dist/index.d.ts"
     },
     "./adapters/bun-sql": {
       "import": "./dist/adapters/bun-sql.js",
-      "types":  "./dist/adapters/bun-sql.d.ts"
+      "types": "./dist/adapters/bun-sql.d.ts"
     },
     "./adapters/redis": {
       "import": "./dist/adapters/redis.js",
-      "types":  "./dist/adapters/redis.d.ts"
+      "types": "./dist/adapters/redis.d.ts"
     },
     "./adapters/memory": {
       "import": "./dist/adapters/memory.js",
-      "types":  "./dist/adapters/memory.d.ts"
+      "types": "./dist/adapters/memory.d.ts"
     },
     "./adapters/schema": {
       "import": "./dist/adapters/schema.js",
-      "types":  "./dist/adapters/schema.d.ts"
+      "types": "./dist/adapters/schema.d.ts"
     }
   },
   "scripts": {
     "build": "bun build ./src/index.ts --outdir ./dist --target bun --format esm",
-    "test":  "bun test --timeout 15000",
-    "dev":   "bun run ./src/index.ts"
+    "test": "bun test --timeout 15000",
+    "dev": "bun run ./src/index.ts"
   },
   "keywords": [
-    "bun", "sqlite", "postgresql", "mysql", "mariadb", "redis",
-    "message-queue", "mq", "queue", "worker", "job",
-    "bunmq", "bun-sql", "task-queue", "background-jobs"
+    "bun",
+    "sqlite",
+    "postgresql",
+    "mysql",
+    "mariadb",
+    "redis",
+    "message-queue",
+    "mq",
+    "queue",
+    "worker",
+    "job",
+    "bunmq",
+    "bun-sql",
+    "task-queue",
+    "background-jobs"
   ],
   "license": "MIT",
   "author": {
